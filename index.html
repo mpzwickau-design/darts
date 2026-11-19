@@ -36,6 +36,7 @@
   --ongold:#1A1405; color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
 body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);
   -webkit-tap-highlight-color:transparent;touch-action:manipulation;overscroll-behavior:none}
@@ -283,6 +284,9 @@ table.lt tr.sum td{font-weight:700;border-bottom:0}
 .tform input,.tform select{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
 .tfh{margin:12px 0 8px;font-size:15px;text-align:left}
 .mbtns{display:flex;gap:6px;flex:none}
+.badge{background:var(--red)}
+#planRole .tnote .btns{flex-direction:row}
+em.orga{font-style:normal;font-size:11.5px;font-weight:700;color:var(--ongold);background:var(--gold);border-radius:6px;padding:1px 6px;margin-left:4px}
 .btns{display:flex;flex-direction:column;gap:8px}
 .btns button{padding:14px;border-radius:12px;font-weight:700;font-size:17px;background:var(--surface2)}
 .btns .pri{background:var(--gold);color:var(--ongold)}
@@ -311,7 +315,7 @@ table.lt tr.sum td{font-weight:700;border-bottom:0}
     </div>
     <button class="start" id="startBtn">Spiel starten</button>
     <button class="resume" id="logBtn">Protokoll und Tagesauswertung</button>
-    <button class="resume" id="planBtn">Termine <span class="badge" id="planBadge" hidden></span></button>
+    <button class="resume" id="planBtn"><span id="planLbl">Termine</span><span class="badge" id="planBadge" hidden title="Unbeantwortete Einladungen"></span></button>
   </div>
 </section>
 
@@ -349,6 +353,7 @@ table.lt tr.sum td{font-weight:700;border-bottom:0}
 <section id="plan" class="screen">
   <div class="lhead"><button class="menu" id="planBack">Zurück</button><h2>Termine</h2><button class="menu gold" id="planNew">Neu</button></div>
   <div class="tnote"><b>Hinweis zu Benachrichtigungen:</b> Eingeladene Spieler mit der Android-App bekommen eine Benachrichtigung aufs Handy. Diese kommt <b>nicht sofort</b>, sondern mit einer Verzögerung von bis zu etwa 30 Minuten, bei Handys mit strengem Stromsparmodus auch später. Zusätzlich erinnert die App am Vortag und 2 Stunden vor dem Termin. Wer die Webversion nutzt, bekommt keine Benachrichtigung und sieht die Einladung beim Öffnen der App. Für eine sofortige Info nutzt „WhatsApp“ oder „E-Mail“ beim Termin.</div>
+  <div id="planRole"></div>
   <div id="planBody"></div>
 </section>
 
@@ -1052,7 +1057,29 @@ function openRosterMgr(){
 }
 
 /* Termine */
-let T=[],tcol=null,tUnsub=null,showPast=false;
+let T=[],tcol=null,tUnsub=null,showPast=false,orga=null,oUnsub=null;
+function msgBox(title,text){openOv(`<h3>${title}</h3><p>${text}</p><div class="btns"><button class="pri" id="mbOk">OK</button></div>`);$('#mbOk').onclick=closeOv}
+const orgaRef=()=>col.parent.collection('meta').doc('orga');
+const isOrga=()=>false;
+const canCreate=()=>!club||!!me;
+const canEdit=t=>!club||!t.creatorUids||(t.creatorUids||[]).includes(myUid());
+function myUids(){const u=myUid();return [...new Set([u].concat(users.filter(x=>same(x.name,me)).map(x=>x.uid)).filter(Boolean))]}
+const orgaNames=()=>orga&&orga.names?[...new Set((orga.uids||[]).map(u=>orga.names[u]).filter(Boolean))]:[];
+function startOrga(){
+  if(oUnsub)oUnsub();
+  oUnsub=orgaRef().onSnapshot(d=>{orga=d.exists?(d.data()||{}):{uids:[],names:{},none:true};termineChanged()},()=>{});
+}
+function claimOrga(){
+  const uid=myUid();if(!uid||!me){msgBox('Noch nicht möglich','Bitte verbinde dich zuerst mit dem Verein und gib deinen Namen an.');return}
+  orgaRef().set({uids:[uid],names:{[uid]:me},since:Date.now()})
+    .then(()=>msgBox('Du bist Organisator','Ab jetzt kannst nur du Termine anlegen, bearbeiten und löschen. Weitere eigene Geräte kannst du unter „Verein“ und „Angemeldete Nutzer anzeigen“ freigeben.'))
+    .catch(e=>msgBox('Nicht möglich',(e&&e.code==='permission-denied')?'Es gibt bereits einen Organisator, oder die neuen Firebase-Regeln sind noch nicht eingetragen.':'Keine Verbindung zum Internet. Bitte später erneut versuchen.'));
+}
+function setOrgaUid(uid,name,on){
+  const FV=firebase.firestore.FieldValue;
+  const upd=on?{uids:FV.arrayUnion(uid),['names.'+uid]:name}:{uids:FV.arrayRemove(uid)};
+  orgaRef().update(upd).then(openUsers).catch(()=>msgBox('Nicht möglich','Nur ein Organisator kann das ändern.'));
+}
 const GAME_LBL={x01:'X01',atc:'Around the Clock',hs:'Highscore',kn:'Kniffel',any:'Spielabend'};
 const same=(a,b)=>String(a||'').toLowerCase()===String(b||'').toLowerCase();
 const rsvpOf=(t,n)=>{const r=t.rsvp||{};const k=Object.keys(r).find(x=>same(x,n));return k?r[k]:''};
@@ -1070,27 +1097,35 @@ function startTermine(){
 }
 function stopTermine(){if(tUnsub)tUnsub();tUnsub=null;tcol=null}
 function termineChanged(){renderTermBadge();if($('#plan').classList.contains('on'))renderPlan();pushNative()}
+function stopOrga(){if(oUnsub)oUnsub();oUnsub=null;orga=null}
 function renderTermBadge(){
-  const now=Date.now(),n=T.filter(t=>t.when>now&&invitedMe(t)&&!rsvpOf(t,me)).length;
-  const b=$('#planBadge');b.hidden=!n;b.textContent=n;
+  const now=Date.now(),up=T.filter(t=>t.when>now).length,open=T.filter(t=>t.when>now&&invitedMe(t)&&!rsvpOf(t,me)).length;
+  $('#planLbl').textContent=up?`Termine (${up} anstehend)`:'Termine';
+  const b=$('#planBadge');b.hidden=!open;b.textContent=open?open+' offen':'';
 }
 function saveTermin(t){
-  if(club&&!tcol){flash('Gerade offline');return false}
+  const existing=T.find(x=>x.id===t.id);
+  if(existing&&!canEdit(existing)){msgBox('Nicht erlaubt','Nur wer den Termin angelegt hat, darf ihn ändern. Du kannst zu- oder absagen.');return false}
+  if(!existing&&!canCreate()){askMe();return false}
+  if(club&&!tcol){msgBox('Gerade offline','Die Verbindung zum Verein steht gerade nicht. Wische von oben nach unten zum Aktualisieren und versuche es dann erneut.');return false}
   const i=T.findIndex(x=>x.id===t.id);if(i>=0)T[i]=t;else T.push(t);
-  if(club) tcol.doc(t.id).set(t).catch(()=>openOv(`<h3>Nicht gespeichert</h3><p>Der Termin konnte nicht gespeichert werden. Bitte prüfe die Internetverbindung und versuche es erneut.</p><div class="btns"><button class="pri" onclick="document.getElementById('ov').classList.remove('on')">OK</button></div>`));
+  if(club) tcol.doc(t.id).set(t).catch(e=>{T=T.filter(x=>x.id!==t.id);termineChanged();msgBox('Nicht gespeichert',(e&&e.code==='permission-denied')?'Das ist nicht erlaubt. Nur wer den Termin angelegt hat, darf ihn ändern. Falls du ihn selbst angelegt hast, sind eventuell die neuen Firebase-Regeln noch nicht eingetragen.':'Der Termin konnte nicht gespeichert werden. Bitte prüfe die Internetverbindung und versuche es erneut.')});
   else store('dart.termine',T);
   termineChanged();return true;
 }
 function setRsvp(t,val){
   if(!me){askMe();return}
   t.rsvp=Object.assign({},t.rsvp||{});Object.keys(t.rsvp).forEach(k=>{if(same(k,me)&&k!==me)delete t.rsvp[k]});t.rsvp[me]=val;
-  if(club&&tcol) tcol.doc(t.id).update(new firebase.firestore.FieldPath('rsvp',me),val).catch(()=>{});
+  if(club&&tcol) tcol.doc(t.id).update(new firebase.firestore.FieldPath('rsvp',me),val).catch(()=>msgBox('Nicht gespeichert','Deine Antwort konnte nicht gespeichert werden. Bitte prüfe die Internetverbindung.'));
+  else if(club){msgBox('Gerade offline','Deine Antwort konnte nicht gespeichert werden. Wische zum Aktualisieren von oben nach unten und versuche es erneut.');return}
   else if(!club) store('dart.termine',T);
   buzz();termineChanged();
 }
 function delTermin(id){
+  const td=T.find(x=>x.id===id);
+  if(td&&!canEdit(td)){msgBox('Nicht erlaubt','Nur wer den Termin angelegt hat, darf ihn löschen.');return}
   T=T.filter(t=>t.id!==id);
-  if(club&&tcol) tcol.doc(id).delete().catch(()=>{});else if(!club) store('dart.termine',T);
+  if(club&&tcol) tcol.doc(id).delete().catch(()=>msgBox('Nicht gelöscht','Der Termin konnte nicht gelöscht werden.'));else if(!club) store('dart.termine',T);
   termineChanged();
 }
 const tDate=t=>new Date(t.when).toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
@@ -1124,9 +1159,12 @@ function renderPlan(){
         <div class="tinv">${inv.map(n=>{const r=rsvpOf(t,n);return `<span class="ti ${r==='ja'?'y':r==='nein'?'n':''}">${r==='ja'?'✓ ':r==='nein'?'✗ ':''}${esc(n)}</span>`}).join('')}</div>
         <div class="tsum">${yes} ${yes===1?'Zusage':'Zusagen'}, ${no} ${no===1?'Absage':'Absagen'}, ${inv.length-yes-no} offen${t.creator?`, angelegt von ${esc(t.creator)}`:''}</div>
         ${invitedMe(t)&&!isPast?`<div class="trsvp"><button data-a="ja" class="${mineR==='ja'?'on y':''}">Ich komme</button><button data-a="nein" class="${mineR==='nein'?'on n':''}">Ich kann nicht</button></div>`:''}
-        <div class="tact">${isPast?'':'<button data-a="wa">WhatsApp</button><button data-a="mail">E-Mail</button><button data-a="edit">Bearbeiten</button>'}<button data-a="del">Löschen</button></div>
+        ${canEdit(t)?`<div class="tact">${isPast?'':'<button data-a="wa">WhatsApp</button><button data-a="mail">E-Mail</button><button data-a="edit">Bearbeiten</button>'}<button data-a="del">Löschen</button></div>`:''}
       </div></div>`;
   };
+  const role=$('#planRole');
+  $('#planNew').hidden=false;
+  role.innerHTML=club?'<p class="hint">Jeder kann Termine anlegen und einladen. Bearbeiten und löschen kann nur, wer den Termin angelegt hat. Die Eingeladenen sagen zu oder ab.</p>':'';
   let h='';
   if(!me&&club) h+=`<p class="hint">Gib zuerst deinen Namen an (Vereinszeile auf der Startseite), damit du Einladungen bekommst.</p>`;
   if(!club) h+=`<p class="hint">Du bist nicht mit dem Verein verbunden. Termine werden nur auf diesem Handy gespeichert und niemand wird benachrichtigt.</p>`;
@@ -1177,7 +1215,7 @@ function openTerminForm(t){
     const invited=[...$('#tfI').querySelectorAll('.rchip.on')].map(c=>c.dataset.n);
     if(!invited.length){msg.textContent='Bitte mindestens einen Spieler einladen.';return}
     const nt=Object.assign({},t||{},{id:t?t.id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),when,game:$('#tfG').value,
-      place:$('#tfP').value.trim(),note:$('#tfN').value.trim(),invited,creator:t?(t.creator||me||''):(me||''),created:t?(t.created||Date.now()):Date.now(),rsvp:Object.assign({},t&&t.rsvp||{})});
+      place:$('#tfP').value.trim(),note:$('#tfN').value.trim(),invited,creator:t?(t.creator||me||''):(me||''),creatorUids:t?(t.creatorUids||myUids()):myUids(),created:t?(t.created||Date.now()):Date.now(),rsvp:Object.assign({},t&&t.rsvp||{})});
     Object.keys(nt.rsvp).forEach(k=>{if(!invited.some(n=>same(n,k)))delete nt.rsvp[k]});
     if(isNew&&me&&invited.some(n=>same(n,me))) nt.rsvp[me]='ja';
     if(!saveTermin(nt))return;
@@ -1188,7 +1226,7 @@ function openTerminForm(t){
 }
 $('#planBtn').onclick=()=>show('plan');
 $('#planBack').onclick=()=>show(G&&!G.over?'game':'setup');
-$('#planNew').onclick=()=>openTerminForm();
+$('#planNew').onclick=()=>{if(canCreate())openTerminForm();else askMe()};
 window.openTermine=()=>show('plan');
 
 /* Nutzer und Online-Anzeige */
@@ -1249,12 +1287,15 @@ function askMe(after){
 }
 function openUsers(){
   const uid=myUid();
-  const rows=users.slice().sort((a,b)=>(isOn(b)-isOn(a))||(b.last-a.last)).map(u=>`<div class="mrow"><span><i class="dot ${isOn(u)?'on':''}"></i> ${esc(u.name)}${u.uid===uid?' (du)':''}<small>${esc(u.platform||'Gerät')}, ${isOn(u)?'jetzt online':(u.last?'zuletzt '+fmtDT(u.last)+' Uhr':'noch nie online')}</small></span>${u.uid===uid?'':`<button data-id="${esc(u.uid)}">Entfernen</button>`}</div>`).join('')||'<p>Noch keine Nutzer angemeldet.</p>';
+  const oU=[],amO=false;
+  const rows=users.slice().sort((a,b)=>(isOn(b)-isOn(a))||(b.last-a.last)).map(u=>{const o=oU.includes(u.uid);
+    return `<div class="mrow"><span><i class="dot ${isOn(u)?'on':''}"></i> ${esc(u.name)}${u.uid===uid?' (du)':''}${o?' <em class="orga">Organisator</em>':''}<small>${esc(u.platform||'Gerät')}, ${isOn(u)?'jetzt online':(u.last?'zuletzt '+fmtDT(u.last)+' Uhr':'noch nie online')}</small></span><span class="mbtns">${amO&&club&&!(o&&u.uid===uid)?`<button data-o="${o?'0':'1'}" data-id="${esc(u.uid)}" data-n="${esc(u.name)}">${o?'Kein Orga':'Orga'}</button>`:''}${u.uid===uid?'':`<button data-id="${esc(u.uid)}">Entfernen</button>`}</span></div>`}).join('')||'<p>Noch keine Nutzer angemeldet.</p>';
   openOv(`<h3>Angemeldete Nutzer</h3><p>Jedes Handy und jeder Browser zählt als eigener Nutzer. Wer in den letzten 3 Minuten aktiv war, gilt als online.</p><div class="mlist">${rows}</div>
     <p class="hint">„Entfernen“ räumt alte Geräte aus der Liste. Ist ein Gerät noch in Benutzung, meldet es sich automatisch wieder an. Um jemanden wirklich auszusperren, ändert ihr das Vereinspasswort in den Firebase-Regeln und gebt das neue nur den übrigen Spielern.</p>
     <div class="btns"><button class="pri" id="ux">Schließen</button></div>`);
   $('#ux').onclick=closeOv;
   $('#ovCard').querySelectorAll('.mrow button').forEach(b=>b.onclick=()=>{
+    if(b.dataset.o){setOrgaUid(b.dataset.id,b.dataset.n,b.dataset.o==='1');return}
     if(b.dataset.c){if(ucol)ucol.doc(b.dataset.id).delete().then(openUsers).catch(()=>{});}
     else{b.dataset.c='1';b.textContent='Wirklich entfernen?';b.classList.add('warn')}
   });
@@ -1357,7 +1398,7 @@ function openClub(){
   $('#dc').onclick=()=>{
     openOv(`<h3>Verbindung trennen?</h3><p>Danach werden neue Spiele nur noch auf diesem Gerät gespeichert. Das gemeinsame Protokoll bleibt online erhalten.</p><div class="btns"><button class="pri" id="dy2">Trennen</button><button id="dn2">Abbrechen</button></div>`);
     $('#dn2').onclick=closeOv;
-    $('#dy2').onclick=()=>{stopUsers();stopTermine();T=load('dart.termine')||[];setTimeout(()=>{nativeClub();termineChanged()},0);if(unsub)unsub();unsub=null;if(rUnsub)rUnsub();rUnsub=null;rcol=null;col=null;club='';roster=load('dart.roster')||[];store('dart.club',null);H=load('dart.history')||[];sync.state='local';closeOv();onSync();renderSetup()};
+    $('#dy2').onclick=()=>{stopUsers();stopTermine();stopOrga();T=load('dart.termine')||[];setTimeout(()=>{nativeClub();termineChanged()},0);if(unsub)unsub();unsub=null;if(rUnsub)rUnsub();rUnsub=null;rcol=null;col=null;club='';roster=load('dart.roster')||[];store('dart.club',null);H=load('dart.history')||[];sync.state='local';closeOv();onSync();renderSetup()};
   };
 }
 $('#clubBtn').onclick=openClub;$('#clubBtn2').onclick=openClub;
