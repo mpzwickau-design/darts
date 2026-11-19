@@ -251,6 +251,38 @@ table.lt tr.sum td{font-weight:700;border-bottom:0}
 .meline{margin:-2px 0 8px!important;color:var(--ink)!important}
 .mrow small{display:block;font-size:12.5px;font-weight:500;color:var(--muted);margin-top:2px}
 .mrow .dot{display:inline-block;vertical-align:middle;margin-right:4px}
+#plan{overflow-y:auto;padding:10px 14px 24px;gap:12px}
+.menu.gold{background:var(--gold);color:var(--ongold);font-weight:700}
+.badge{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;margin-left:6px;border-radius:999px;background:var(--red);color:var(--onacc);font-size:13px;font-weight:700;vertical-align:1px}
+.tnote{font-size:13.5px;line-height:1.45;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:10px;padding:10px 12px}
+.tnote b{color:var(--ink)}
+.tcard{display:flex;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+.tcard.open{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.tcard.past{opacity:.6}
+.tdate{flex:none;width:54px;text-align:center;border-radius:10px;background:var(--surface2);padding:6px 0;align-self:flex-start}
+.tdate span{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.tdate b{display:block;font-family:var(--num);font-weight:800;font-size:28px;line-height:1;color:var(--gold)}
+.tbody{flex:1;min-width:0}
+.tt{font-family:var(--num);font-weight:800;font-size:22px;line-height:1.1;display:flex;justify-content:space-between;gap:8px}
+.tt span{color:var(--gold)}
+.tp{font-size:14px;color:var(--muted);margin-top:3px}
+.tinv{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.ti{font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface2);color:var(--muted)}
+.ti.y{background:var(--green);color:var(--onacc)}
+.ti.n{background:var(--red);color:var(--onacc)}
+.tsum{font-size:12.5px;color:var(--muted);margin-top:6px}
+.trsvp{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.trsvp button{padding:11px 6px;border-radius:10px;background:var(--surface2);font-weight:700;font-size:15px}
+.trsvp button.on.y{background:var(--green);color:var(--onacc)}
+.trsvp button.on.n{background:var(--red);color:var(--onacc)}
+.tact{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tact button{padding:7px 11px;border-radius:8px;background:var(--surface2);font-size:13.5px;font-weight:600;color:var(--muted)}
+.tform{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;margin-bottom:6px}
+.tform label{display:flex;flex-direction:column;gap:5px;font-size:13.5px;font-weight:600;color:var(--muted)}
+.tform label.full{grid-column:1/-1}
+.tform input,.tform select{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+.tfh{margin:12px 0 8px;font-size:15px;text-align:left}
+.mbtns{display:flex;gap:6px;flex:none}
 .btns{display:flex;flex-direction:column;gap:8px}
 .btns button{padding:14px;border-radius:12px;font-weight:700;font-size:17px;background:var(--surface2)}
 .btns .pri{background:var(--gold);color:var(--ongold)}
@@ -279,6 +311,7 @@ table.lt tr.sum td{font-weight:700;border-bottom:0}
     </div>
     <button class="start" id="startBtn">Spiel starten</button>
     <button class="resume" id="logBtn">Protokoll und Tagesauswertung</button>
+    <button class="resume" id="planBtn">Termine <span class="badge" id="planBadge" hidden></span></button>
   </div>
 </section>
 
@@ -311,6 +344,12 @@ table.lt tr.sum td{font-weight:700;border-bottom:0}
   </div>
   <div class="field" id="basisField"><h2>Punkte bei X01</h2><div class="seg" id="segBasis"></div><p class="hint" id="basisHint"></p></div>
   <div id="logBody"></div>
+</section>
+
+<section id="plan" class="screen">
+  <div class="lhead"><button class="menu" id="planBack">Zurück</button><h2>Termine</h2><button class="menu gold" id="planNew">Neu</button></div>
+  <div class="tnote"><b>Hinweis zu Benachrichtigungen:</b> Eingeladene Spieler mit der Android-App bekommen eine Benachrichtigung aufs Handy. Diese kommt <b>nicht sofort</b>, sondern mit einer Verzögerung von bis zu etwa 30 Minuten, bei Handys mit strengem Stromsparmodus auch später. Zusätzlich erinnert die App am Vortag und 2 Stunden vor dem Termin. Wer die Webversion nutzt, bekommt keine Benachrichtigung und sieht die Einladung beim Öffnen der App. Für eine sofortige Info nutzt „WhatsApp“ oder „E-Mail“ beim Termin.</div>
+  <div id="planBody"></div>
 </section>
 
 <div class="ptr" id="ptr" aria-live="polite"><span class="ptr-i" id="ptrI">↓</span><span id="ptrTxt">Zum Aktualisieren ziehen</span></div>
@@ -970,7 +1009,7 @@ function startRoster(){
   rcol=col.parent.collection('spieler');
   let first=true;
   rUnsub=rcol.onSnapshot({includeMetadataChanges:true},snap=>{
-    roster=snap.docs.map(d=>({id:d.id,name:(d.data()||{}).name||d.id}));
+    roster=snap.docs.map(d=>{const x=d.data()||{};return {id:d.id,name:x.name||d.id,email:x.email||''}});
     store('dart.roster.club',roster);
     if(first&&!snap.metadata.fromCache){
       first=false;
@@ -987,15 +1026,170 @@ function startRoster(){
     if($('#setup').classList.contains('on')) renderSetup();
   },()=>{});
 }
+function setEmail(name,email){
+  const r=roster.find(x=>x.name.toLowerCase()===String(name).toLowerCase());if(!r)return;
+  r.email=email;saveRoster();
+  if(club&&rcol) rcol.doc(r.id).set({name:r.name,email},{merge:true}).catch(()=>flash('Speichern fehlgeschlagen'));
+}
+const mailOk=v=>!v||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+function editEmail(id){
+  const r=roster.find(x=>x.id===id);if(!r)return;
+  openOv(`<h3>E-Mail von ${esc(r.name)}</h3><p>Wird nur für Termin-Einladungen per E-Mail verwendet und ist für alle Vereinsmitglieder sichtbar.</p>
+    <input class="pwin" id="emIn" type="email" autocomplete="off" placeholder="name@beispiel.de" value="${esc(r.email||'')}">
+    <p class="pwmsg" id="emMsg"></p><div class="btns"><button class="pri" id="emOk">Speichern</button><button id="emX">Abbrechen</button></div>`);
+  $('#emX').onclick=openRosterMgr;
+  $('#emOk').onclick=()=>{const v=$('#emIn').value.trim();if(!mailOk(v)){$('#emMsg').textContent='Das sieht nicht wie eine E-Mail-Adresse aus.';return}setEmail(r.name,v);openRosterMgr()};
+}
 function openRosterMgr(){
-  const list=rosterNames().map(n=>{const r=roster.find(x=>x.name===n);return `<div class="mrow"><span>${esc(n)}</span><button data-id="${esc(r.id)}" data-n="${esc(n)}">Entfernen</button></div>`}).join('')||'<p>Noch keine Spieler angelegt.</p>';
+  const list=rosterNames().map(n=>{const r=roster.find(x=>x.name===n);return `<div class="mrow"><span>${esc(n)}<small>${r.email?esc(r.email):'keine E-Mail hinterlegt'}</small></span><span class="mbtns"><button data-act="mail" data-id="${esc(r.id)}">E-Mail</button><button data-act="del" data-id="${esc(r.id)}" data-n="${esc(n)}">Entfernen</button></span></div>`}).join('')||'<p>Noch keine Spieler angelegt.</p>';
   openOv(`<h3>Spielerliste</h3><p>Entfernte Spieler verschwinden nur aus der Auswahl${club?' auf allen Handys':''}. Ihre bisherigen Ergebnisse bleiben im Protokoll.</p><div class="mlist">${list}</div><div class="btns"><button class="pri" id="mgx">Fertig</button></div>`);
   $('#mgx').onclick=()=>{closeOv();renderSetup()};
   $('#ovCard').querySelectorAll('.mrow button').forEach(b=>b.onclick=()=>{
+    if(b.dataset.act==='mail'){editEmail(b.dataset.id);return}
     if(b.dataset.c){delPlayer(b.dataset.id);S.players=S.players.filter(p=>p.toLowerCase()!==b.dataset.n.toLowerCase());openRosterMgr()}
-    else{b.dataset.c='1';b.textContent='Wirklich entfernen?';b.classList.add('warn')}
+    else{b.dataset.c='1';b.textContent='Wirklich?';b.classList.add('warn')}
   });
 }
+
+/* Termine */
+let T=[],tcol=null,tUnsub=null,showPast=false;
+const GAME_LBL={x01:'X01',atc:'Around the Clock',hs:'Highscore',kn:'Kniffel',any:'Spielabend'};
+const same=(a,b)=>String(a||'').toLowerCase()===String(b||'').toLowerCase();
+const rsvpOf=(t,n)=>{const r=t.rsvp||{};const k=Object.keys(r).find(x=>same(x,n));return k?r[k]:''};
+const invitedMe=t=>!!me&&(t.invited||[]).some(n=>same(n,me));
+function nativeClub(){try{if(window.Native&&Native.setClub)Native.setClub(club||'',club&&me?me:'')}catch(e){}}
+function pushNative(){try{if(window.Native&&Native.termine)Native.termine(JSON.stringify(T))}catch(e){}}
+function openExternal(url){
+  try{if(window.Native&&Native.openUrl){Native.openUrl(url);return}}catch(e){}
+  if(url.startsWith('mailto:'))location.href=url;else window.open(url,'_blank');
+}
+function startTermine(){
+  if(tUnsub)tUnsub();
+  tcol=col.parent.collection('termine');
+  tUnsub=tcol.onSnapshot(snap=>{T=snap.docs.map(d=>Object.assign({},d.data(),{id:d.id}));store('dart.termine.club',T);termineChanged()},()=>{});
+}
+function stopTermine(){if(tUnsub)tUnsub();tUnsub=null;tcol=null}
+function termineChanged(){renderTermBadge();if($('#plan').classList.contains('on'))renderPlan();pushNative()}
+function renderTermBadge(){
+  const now=Date.now(),n=T.filter(t=>t.when>now&&invitedMe(t)&&!rsvpOf(t,me)).length;
+  const b=$('#planBadge');b.hidden=!n;b.textContent=n;
+}
+function saveTermin(t){
+  if(club&&!tcol){flash('Gerade offline');return false}
+  const i=T.findIndex(x=>x.id===t.id);if(i>=0)T[i]=t;else T.push(t);
+  if(club) tcol.doc(t.id).set(t).catch(()=>openOv(`<h3>Nicht gespeichert</h3><p>Der Termin konnte nicht gespeichert werden. Bitte prüfe die Internetverbindung und versuche es erneut.</p><div class="btns"><button class="pri" onclick="document.getElementById('ov').classList.remove('on')">OK</button></div>`));
+  else store('dart.termine',T);
+  termineChanged();return true;
+}
+function setRsvp(t,val){
+  if(!me){askMe();return}
+  t.rsvp=Object.assign({},t.rsvp||{});Object.keys(t.rsvp).forEach(k=>{if(same(k,me)&&k!==me)delete t.rsvp[k]});t.rsvp[me]=val;
+  if(club&&tcol) tcol.doc(t.id).update(new firebase.firestore.FieldPath('rsvp',me),val).catch(()=>{});
+  else if(!club) store('dart.termine',T);
+  buzz();termineChanged();
+}
+function delTermin(id){
+  T=T.filter(t=>t.id!==id);
+  if(club&&tcol) tcol.doc(id).delete().catch(()=>{});else if(!club) store('dart.termine',T);
+  termineChanged();
+}
+const tDate=t=>new Date(t.when).toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+function shareText(t){
+  const inv=(t.invited||[]).join(', ');
+  return `Schierkerband: Einladung zum Spieltermin\n\n${GAME_LBL[t.game]||'Spielabend'}\n${tDate(t)} um ${fmtTime(t.when)} Uhr${t.place?'\nOrt: '+t.place:''}${t.note?'\nHinweis: '+t.note:''}\n\nEingeladen: ${inv}\n\nBitte in der Schierkerband-App unter „Termine“ zu- oder absagen.`;
+}
+function shareWA(t){openExternal('https://wa.me/?text='+encodeURIComponent(shareText(t)))}
+function shareMail(t){
+  const mails=(t.invited||[]).map(n=>{const r=roster.find(x=>same(x.name,n));return r&&r.email}).filter(Boolean);
+  const subj=`Einladung: ${GAME_LBL[t.game]||'Spielabend'} am ${new Date(t.when).toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'})} um ${fmtTime(t.when)} Uhr`;
+  const go=()=>openExternal('mailto:?'+(mails.length?'bcc='+mails.join(',')+'&':'')+'subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(shareText(t)));
+  const missing=(t.invited||[]).filter(n=>{const r=roster.find(x=>same(x.name,n));return !(r&&r.email)});
+  if(missing.length){
+    openOv(`<h3>E-Mail-Einladung</h3><p>${mails.length?`Für ${missing.map(esc).join(', ')} ist keine E-Mail-Adresse hinterlegt. Die übrigen ${mails.length} bekommen die Einladung.`:'Für die eingeladenen Spieler sind noch keine E-Mail-Adressen hinterlegt. Du kannst die Empfänger im E-Mail-Programm selbst eintragen.'}</p><p class="hint">Adressen hinterlegst du auf der Startseite unter „Spielerliste bearbeiten“.</p><div class="btns"><button class="pri" id="smGo">E-Mail-Programm öffnen</button><button id="smX">Abbrechen</button></div>`);
+    $('#smX').onclick=closeOv;$('#smGo').onclick=()=>{closeOv();go()};
+  }else go();
+}
+function renderPlan(){
+  const now=Date.now(),body=$('#planBody');
+  const up=T.filter(t=>t.when>=now-3*3600000).sort((a,b)=>a.when-b.when);
+  const past=T.filter(t=>t.when<now-3*3600000).sort((a,b)=>b.when-a.when).slice(0,20);
+  const card=(t,isPast)=>{
+    const d=new Date(t.when),inv=t.invited||[],mineR=rsvpOf(t,me);
+    const yes=inv.filter(n=>rsvpOf(t,n)==='ja').length,no=inv.filter(n=>rsvpOf(t,n)==='nein').length;
+    return `<div class="tcard${invitedMe(t)&&!mineR&&!isPast?' open':''}${isPast?' past':''}" data-id="${esc(t.id)}">
+      <div class="tdate"><span>${d.toLocaleDateString('de-DE',{weekday:'short'})}</span><b>${d.getDate()}.</b><span>${d.toLocaleDateString('de-DE',{month:'short'})}</span></div>
+      <div class="tbody">
+        <div class="tt">${esc(GAME_LBL[t.game]||'Spielabend')}<span>${fmtTime(t.when)} Uhr</span></div>
+        ${t.place?`<div class="tp">Ort: ${esc(t.place)}</div>`:''}${t.note?`<div class="tp">${esc(t.note)}</div>`:''}
+        <div class="tinv">${inv.map(n=>{const r=rsvpOf(t,n);return `<span class="ti ${r==='ja'?'y':r==='nein'?'n':''}">${r==='ja'?'✓ ':r==='nein'?'✗ ':''}${esc(n)}</span>`}).join('')}</div>
+        <div class="tsum">${yes} ${yes===1?'Zusage':'Zusagen'}, ${no} ${no===1?'Absage':'Absagen'}, ${inv.length-yes-no} offen${t.creator?`, angelegt von ${esc(t.creator)}`:''}</div>
+        ${invitedMe(t)&&!isPast?`<div class="trsvp"><button data-a="ja" class="${mineR==='ja'?'on y':''}">Ich komme</button><button data-a="nein" class="${mineR==='nein'?'on n':''}">Ich kann nicht</button></div>`:''}
+        <div class="tact">${isPast?'':'<button data-a="wa">WhatsApp</button><button data-a="mail">E-Mail</button><button data-a="edit">Bearbeiten</button>'}<button data-a="del">Löschen</button></div>
+      </div></div>`;
+  };
+  let h='';
+  if(!me&&club) h+=`<p class="hint">Gib zuerst deinen Namen an (Vereinszeile auf der Startseite), damit du Einladungen bekommst.</p>`;
+  if(!club) h+=`<p class="hint">Du bist nicht mit dem Verein verbunden. Termine werden nur auf diesem Handy gespeichert und niemand wird benachrichtigt.</p>`;
+  h+=up.length?up.map(t=>card(t,false)).join(''):`<div class="empty"><p>Keine anstehenden Termine. Tippe oben auf „Neu“, um einen Spieltermin anzulegen.</p></div>`;
+  if(past.length) h+=`<button class="addp" id="pastT">${showPast?'Vergangene Termine ausblenden':'Vergangene Termine anzeigen ('+past.length+')'}</button>`+(showPast?past.map(t=>card(t,true)).join(''):'');
+  body.innerHTML=h;
+  if($('#pastT'))$('#pastT').onclick=()=>{showPast=!showPast;renderPlan()};
+  body.querySelectorAll('.tcard').forEach(c=>{
+    const t=T.find(x=>x.id===c.dataset.id);if(!t)return;
+    c.querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>{
+      const a=b.dataset.a;
+      if(a==='ja'||a==='nein') setRsvp(t,a);
+      else if(a==='wa') shareWA(t);
+      else if(a==='mail') shareMail(t);
+      else if(a==='edit') openTerminForm(t);
+      else if(a==='del'){
+        openOv(`<h3>Termin löschen?</h3><p>${esc(GAME_LBL[t.game]||'Spielabend')} am ${tDate(t)} wird für alle gelöscht.</p><div class="btns"><button class="pri" id="tdy">Löschen</button><button id="tdn">Abbrechen</button></div>`);
+        $('#tdn').onclick=closeOv;$('#tdy').onclick=()=>{delTermin(t.id);closeOv()};
+      }
+    });
+  });
+}
+function openTerminForm(t){
+  const isNew=!t,d0=t?new Date(t.when):new Date(Date.now()+86400000);
+  const dv=d0.getFullYear()+'-'+pad2(d0.getMonth()+1)+'-'+pad2(d0.getDate()),tv=t?pad2(d0.getHours())+':'+pad2(d0.getMinutes()):'19:30';
+  const sel=new Set((t?t.invited:rosterNames()).map(n=>n.toLowerCase()));
+  const names=rosterNames();
+  openOv(`<h3>${isNew?'Neuer Termin':'Termin bearbeiten'}</h3>
+    <div class="tform">
+      <label>Datum<input type="date" id="tfD" value="${dv}"></label>
+      <label>Uhrzeit<input type="time" id="tfT" value="${tv}"></label>
+      <label class="full">Spielart<select id="tfG">${Object.keys(GAME_LBL).map(k=>`<option value="${k}"${(t?t.game:'any')===k?' selected':''}>${GAME_LBL[k]}</option>`).join('')}</select></label>
+      <label class="full">Ort<input id="tfP" maxlength="60" placeholder="z. B. Vereinsheim" value="${esc(t&&t.place||'')}"></label>
+      <label class="full">Hinweis<input id="tfN" maxlength="120" placeholder="freiwillig" value="${esc(t&&t.note||'')}"></label>
+    </div>
+    <h4 class="tfh">Eingeladen</h4>
+    <div class="roster cen" id="tfI">${names.map(n=>`<button class="rchip${sel.has(n.toLowerCase())?' on':''}" data-n="${esc(n)}">${esc(n)}</button>`).join('')||'<p class="hint">Noch keine Spieler angelegt.</p>'}</div>
+    <p class="pwmsg" id="tfMsg"></p>
+    <p class="hint">Benachrichtigungen an die Eingeladenen kommen mit Verzögerung von bis zu etwa 30 Minuten.</p>
+    <div class="btns"><button class="pri" id="tfS">Speichern</button><button id="tfX">Abbrechen</button></div>`);
+  $('#tfI').querySelectorAll('.rchip').forEach(c=>c.onclick=()=>{c.classList.toggle('on');buzz()});
+  $('#tfX').onclick=closeOv;
+  $('#tfS').onclick=()=>{
+    const dv=$('#tfD').value,tv=$('#tfT').value,msg=$('#tfMsg');
+    if(!dv||!tv){msg.textContent='Bitte Datum und Uhrzeit angeben.';return}
+    const [y,m,dd]=dv.split('-').map(Number),[hh,mm]=tv.split(':').map(Number);
+    const when=new Date(y,m-1,dd,hh,mm).getTime();
+    const invited=[...$('#tfI').querySelectorAll('.rchip.on')].map(c=>c.dataset.n);
+    if(!invited.length){msg.textContent='Bitte mindestens einen Spieler einladen.';return}
+    const nt=Object.assign({},t||{},{id:t?t.id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),when,game:$('#tfG').value,
+      place:$('#tfP').value.trim(),note:$('#tfN').value.trim(),invited,creator:t?(t.creator||me||''):(me||''),created:t?(t.created||Date.now()):Date.now(),rsvp:Object.assign({},t&&t.rsvp||{})});
+    Object.keys(nt.rsvp).forEach(k=>{if(!invited.some(n=>same(n,k)))delete nt.rsvp[k]});
+    if(isNew&&me&&invited.some(n=>same(n,me))) nt.rsvp[me]='ja';
+    if(!saveTermin(nt))return;
+    openOv(`<h3>Termin gespeichert</h3><p>Die Eingeladenen mit der Android-App werden innerhalb von etwa 30 Minuten benachrichtigt. Willst du sofort Bescheid geben?</p>
+      <div class="btns"><button class="pri" id="sgW">Per WhatsApp teilen</button><button id="sgM">Per E-Mail einladen</button><button id="sgX">Fertig</button></div>`);
+    $('#sgW').onclick=()=>{closeOv();shareWA(nt)};$('#sgM').onclick=()=>{closeOv();shareMail(nt)};$('#sgX').onclick=closeOv;
+  };
+}
+$('#planBtn').onclick=()=>show('plan');
+$('#planBack').onclick=()=>show(G&&!G.over?'game':'setup');
+$('#planNew').onclick=()=>openTerminForm();
+window.openTermine=()=>show('plan');
 
 /* Nutzer und Online-Anzeige */
 let me=load('dart.me')||'',ucol=null,uUnsub=null,users=[],hb=null;
@@ -1038,6 +1232,7 @@ function askMe(after){
   openOv(`<h3>Wer bist du?</h3><p>Gib einmalig deinen Namen an. Er wird den anderen angezeigt, wenn du online bist, und kommt auch in die Spielerliste.</p>
     <div class="roster cen" id="meR">${names.map(n=>`<button class="rchip${n===me?' on':''}" data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>
     <input class="pwin" id="meIn" maxlength="16" autocomplete="off" placeholder="${names.length?'Oder neuen Namen eingeben':'Dein Name'}">
+    <input class="pwin" id="meMail" type="email" autocomplete="email" placeholder="Deine E-Mail (freiwillig, für Einladungen)">
     <p class="pwmsg" id="meMsg"></p>
     <div class="btns"><button class="pri" id="meOk">Weiter</button></div>`);
   $('#meR').querySelectorAll('.rchip').forEach(c=>c.onclick=()=>{pick=c.dataset.n;$('#meIn').value='';$('#meR').querySelectorAll('.rchip').forEach(x=>x.classList.toggle('on',x===c));buzz()});
@@ -1046,7 +1241,8 @@ function askMe(after){
     const v=$('#meIn').value.trim();
     const n=v?addPlayer(v):pick;
     if(!n){$('#meMsg').textContent='Bitte wähle deinen Namen aus oder gib einen neuen ein.';return}
-    me=n;store('dart.me',me);closeOv();touchMe(true);renderOnline();renderSetup();
+    const em=$('#meMail').value.trim();if(!mailOk(em)){$('#meMsg').textContent='Die E-Mail-Adresse sieht nicht richtig aus.';return}
+    me=n;store('dart.me',me);if(em)setEmail(n,em);closeOv();touchMe(true);renderOnline();renderSetup();nativeClub();renderTermBadge();
     if(after) setTimeout(after,300);
   };
   $('#meOk').onclick=ok;$('#meIn').onkeydown=e=>{if(e.key==='Enter')ok()};
@@ -1070,7 +1266,7 @@ window.addEventListener('pagehide',()=>touchMe(false));
 
 function startSync(c){
   if(unsub)unsub();
-  col=c;startRoster();startUsers();
+  col=c;startRoster();startUsers();startTermine();nativeClub();
   unsub=col.onSnapshot({includeMetadataChanges:true},snap=>{
     H=snap.docs.map(d=>d.data());
     sync.state=snap.metadata.fromCache?'offline':'online';sync.pending=snap.metadata.hasPendingWrites;if(!snap.metadata.fromCache)sync.last=Date.now();
@@ -1161,7 +1357,7 @@ function openClub(){
   $('#dc').onclick=()=>{
     openOv(`<h3>Verbindung trennen?</h3><p>Danach werden neue Spiele nur noch auf diesem Gerät gespeichert. Das gemeinsame Protokoll bleibt online erhalten.</p><div class="btns"><button class="pri" id="dy2">Trennen</button><button id="dn2">Abbrechen</button></div>`);
     $('#dn2').onclick=closeOv;
-    $('#dy2').onclick=()=>{stopUsers();if(unsub)unsub();unsub=null;if(rUnsub)rUnsub();rUnsub=null;rcol=null;col=null;club='';roster=load('dart.roster')||[];store('dart.club',null);H=load('dart.history')||[];sync.state='local';closeOv();onSync();renderSetup()};
+    $('#dy2').onclick=()=>{stopUsers();stopTermine();T=load('dart.termine')||[];setTimeout(()=>{nativeClub();termineChanged()},0);if(unsub)unsub();unsub=null;if(rUnsub)rUnsub();rUnsub=null;rcol=null;col=null;club='';roster=load('dart.roster')||[];store('dart.club',null);H=load('dart.history')||[];sync.state='local';closeOv();onSync();renderSetup()};
   };
 }
 $('#clubBtn').onclick=openClub;$('#clubBtn2').onclick=openClub;
@@ -1175,9 +1371,10 @@ async function refreshData(){
     if(!col){await initClub();if(!col) return 'Keine Verbindung zum Internet'}
     const db=await fbStart();
     try{await db.disableNetwork();await db.enableNetwork()}catch(e){}
-    const [a,b]=await withTimeout(Promise.all([col.get({source:'server'}),rcol.get({source:'server'})]),12000);
+    const [a,b,c]=await withTimeout(Promise.all([col.get({source:'server'}),rcol.get({source:'server'}),tcol.get({source:'server'})]),12000);
+    T=c.docs.map(d=>Object.assign({},d.data(),{id:d.id}));store('dart.termine.club',T);termineChanged();
     H=a.docs.map(d=>d.data());store('dart.history.club',H);
-    roster=b.docs.map(d=>({id:d.id,name:(d.data()||{}).name||d.id}));store('dart.roster.club',roster);
+    roster=b.docs.map(d=>{const x=d.data()||{};return {id:d.id,name:x.name||d.id,email:x.email||''}});store('dart.roster.club',roster);
     sync.state='online';sync.last=Date.now();
     await flushQueue();onSync();
     if($('#setup').classList.contains('on')) renderSetup();
@@ -1216,12 +1413,12 @@ function attachPTR(el){
     if(dy*0.5>=60) doRefresh(); else ptrHide();
   });
 }
-attachPTR($('#setup'));attachPTR($('#log'));
+attachPTR($('#setup'));attachPTR($('#log'));attachPTR($('#plan'));
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&club&&!col)initClub()});
 
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
-  if(id==='setup'){closeOv();renderSetup()}else if(id==='log'){closeOv();renderLog()}else render();
+  if(id==='setup'){closeOv();renderSetup();renderTermBadge()}else if(id==='log'){closeOv();renderLog()}else if(id==='plan'){closeOv();renderPlan()}else render();
 }
 roster=load(club?'dart.roster.club':'dart.roster')||[];
 if(!S.v10){
@@ -1237,6 +1434,7 @@ if(!S.v10){
 }
 show(G&&!G.over?'game':'setup');
 if(club){H=load('dart.history.club')||[]}
+T=load(club?'dart.termine.club':'dart.termine')||[];renderTermBadge();nativeClub();
 onSync();initClub();
 if(club&&!me) setTimeout(()=>askMe(),900);
 })();
