@@ -217,6 +217,32 @@ table.lt tr.sum td{font-weight:700;border-bottom:0}
 .dot.err{background:var(--red)}
 .pwin{width:100%;font:inherit;font-size:18px;padding:13px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin-bottom:6px}
 .pwmsg{min-height:1.4em;font-size:14px;color:var(--red)!important;margin:0 0 10px!important}
+.field h2.sub{margin-top:16px}
+.prow.sel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 4px 4px 12px}
+.prow.sel button{width:42px;height:42px}
+.pnum{font-family:var(--num);font-weight:800;color:var(--gold);font-size:22px;width:20px}
+.pname{flex:1;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roster{display:flex;flex-wrap:wrap;gap:8px}
+.rchip{padding:10px 15px;border-radius:999px;background:var(--surface);border:1.5px solid var(--line);font-weight:600;font-size:15.5px}
+.rchip.on{background:var(--gold);border-color:var(--gold);color:var(--ongold)}
+.newp{display:flex;gap:8px;margin-top:12px}
+.newp input{flex:1;min-width:0;font:inherit;font-size:17px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.newp button{padding:0 16px;border-radius:10px;background:var(--gold);color:var(--ongold);font-weight:700}
+#rosterMsg{margin:6px 0 0!important;min-height:0}
+.mlist{text-align:left;margin:0 0 16px;max-height:45vh;overflow:auto}
+.mrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:16px;font-weight:600}
+.mrow button{padding:7px 12px;border-radius:8px;background:var(--surface2);font-size:14px;font-weight:600;color:var(--muted)}
+.mrow button.warn{background:var(--red);color:var(--onacc)}
+.ptr{--py:0px;position:fixed;left:50%;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:8px;
+  padding:9px 16px 9px 10px;border-radius:999px;background:var(--surface);border:1.5px solid var(--gold);color:var(--ink);font-size:14.5px;font-weight:600;
+  box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:92vw;transform:translate(-50%,calc(var(--py) - 64px));opacity:0;pointer-events:none;white-space:nowrap}
+.ptr-i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:var(--ongold);font-weight:800;font-size:15px;transition:transform .15s}
+.ptr.ready .ptr-i{background:var(--green);color:var(--onacc)}
+.ptr.spin .ptr-i{animation:ptrspin .8s linear infinite}
+.ptr.done{transition:transform .2s}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
+.ptrhint{margin:-6px 2px 0!important;font-size:13px!important}
+#setup,#log{overscroll-behavior-y:contain}
 .btns{display:flex;flex-direction:column;gap:8px}
 .btns button{padding:14px;border-radius:12px;font-weight:700;font-size:17px;background:var(--surface2)}
 .btns .pri{background:var(--gold);color:var(--ongold)}
@@ -233,10 +259,14 @@ table.lt tr.sum td{font-weight:700;border-bottom:0}
     <button class="resume" id="resumeBtn" hidden>Laufendes Spiel fortsetzen</button>
     <div class="field"><h2>Spiel</h2><div class="games" id="games"></div><p class="hint" id="gameHint"></p></div>
     <div id="opts" style="display:flex;flex-direction:column;gap:20px"></div>
-    <div class="field"><h2>Spieler (Reihenfolge = Wurfreihenfolge)</h2>
+    <div class="field"><h2>Spieler in diesem Spiel (Reihenfolge = Wurfreihenfolge)</h2>
       <div class="plist" id="plist"></div>
-      <button class="addp" id="addP">Spieler hinzufügen</button>
-      <p class="hint">Bis zu 6 Spieler. Wer oben steht, wirft zuerst. Ein leeres Namensfeld wird automatisch zu „Spieler 1“, „Spieler 2“ und so weiter.</p>
+      <h2 class="sub">Spieler auswählen</h2>
+      <div class="roster" id="roster"></div>
+      <div class="newp"><input id="newP" maxlength="16" autocomplete="off" placeholder="Neuen Spieler anlegen" aria-label="Name des neuen Spielers"><button id="addNew">Anlegen</button></div>
+      <p class="pwmsg" id="rosterMsg"></p>
+      <p class="hint" id="rosterHint"></p>
+      <button class="addp" id="manageP">Spielerliste bearbeiten</button>
     </div>
     <button class="start" id="startBtn">Spiel starten</button>
     <button class="resume" id="logBtn">Protokoll und Tagesauswertung</button>
@@ -263,6 +293,7 @@ table.lt tr.sum td{font-weight:700;border-bottom:0}
 <section id="log" class="screen">
   <div class="lhead"><button class="menu" id="logBack">Zurück</button><h2>Protokoll</h2><span></span></div>
   <button class="clubcard sm" id="clubBtn2"><i class="dot" id="clubDot2"></i><span id="clubTxt2"></span><b>Verein</b></button>
+  <p class="hint ptrhint">Zum Aktualisieren von oben nach unten wischen.</p>
   <div class="seg" id="segCat"></div>
   <div class="filters">
     <label>Spieltag<select id="fDay"></select></label>
@@ -271,6 +302,8 @@ table.lt tr.sum td{font-weight:700;border-bottom:0}
   <div class="field" id="basisField"><h2>Punkte bei X01</h2><div class="seg" id="segBasis"></div><p class="hint" id="basisHint"></p></div>
   <div id="logBody"></div>
 </section>
+
+<div class="ptr" id="ptr" aria-live="polite"><span class="ptr-i" id="ptrI">↓</span><span id="ptrTxt">Zum Aktualisieren ziehen</span></div>
 
 <div class="ov" id="ov"><div class="card" id="ovCard"></div></div>
 
@@ -315,6 +348,7 @@ if(!S.v6){S.v6=1;S.hsRounds=15;S.hsMode='final';}
 let G=load('dart.game2');
 let undo=load('dart.undo2')||[];
 let H=load('dart.history')||[];
+let roster=[];
 const saveH=()=>{if(!col)store('dart.history',H)};
 let col=null;
 let mod=1, entry='';
@@ -396,23 +430,49 @@ function renderSetup(){
     seg(field('Kniffelrunden auf dem Blatt',HELP.kn(S.knRounds)),[[5,'5'],[10,'10']],S.knRounds,v=>{S.knRounds=v;renderSetup()});
   }
   const pl=$('#plist');pl.innerHTML='';
+  S.players=S.players.filter(n=>n&&n.trim());
+  if(!S.players.length) pl.innerHTML='<p class="hint" style="margin:0">Noch niemand ausgewählt. Tippe unten auf die Namen der Mitspieler.</p>';
+  const mk=(t,l,fn)=>{const x=document.createElement('button');x.textContent=t;x.setAttribute('aria-label',l);x.onclick=fn;return x};
   S.players.forEach((name,i)=>{
-    const r=document.createElement('div');r.className='prow';
-    const inp=document.createElement('input');inp.value=name;inp.maxLength=16;inp.setAttribute('aria-label','Name Spieler '+(i+1));
-    inp.oninput=()=>{S.players[i]=inp.value;store('dart.settings',S)};r.appendChild(inp);
-    if(S.players.length>1){const x=document.createElement('button');x.textContent='×';x.setAttribute('aria-label','Spieler entfernen');
-      x.onclick=()=>{S.players.splice(i,1);renderSetup()};r.appendChild(x)}
+    const r=document.createElement('div');r.className='prow sel';
+    r.innerHTML=`<span class="pnum">${i+1}</span><span class="pname">${esc(name)}</span>`;
+    if(i>0) r.appendChild(mk('↑','Nach oben schieben',()=>{[S.players[i-1],S.players[i]]=[S.players[i],S.players[i-1]];buzz();renderSetup()}));
+    r.appendChild(mk('×','Aus dem Spiel nehmen',()=>{S.players.splice(i,1);buzz();renderSetup()}));
     pl.appendChild(r);
   });
-  $('#addP').hidden=S.players.length>=6;
+  const ro=$('#roster');ro.innerHTML='';
+  const sel=new Set(S.players.map(n=>n.toLowerCase()));
+  rosterNames().forEach(n=>{
+    const c=document.createElement('button');c.className='rchip'+(sel.has(n.toLowerCase())?' on':'');c.textContent=n;
+    c.setAttribute('aria-pressed',String(sel.has(n.toLowerCase())));
+    c.onclick=()=>{
+      const i=S.players.findIndex(p=>p.toLowerCase()===n.toLowerCase());
+      if(i>=0) S.players.splice(i,1);
+      else{if(S.players.length>=6){$('#rosterMsg').textContent='Höchstens 6 Spieler pro Spiel.';return}S.players.push(n)}
+      $('#rosterMsg').textContent='';buzz();renderSetup();
+    };
+    ro.appendChild(c);
+  });
+  if(!roster.length) ro.innerHTML='<p class="hint" style="margin:0">Noch keine Spieler angelegt. Lege sie unten einmal an, danach tippst du sie nur noch an.</p>';
+  $('#rosterHint').textContent=club
+    ?'Die Spielerliste ist für alle Vereinsmitglieder gleich. Neu angelegte Spieler erscheinen sofort auf allen Handys.'
+    :'Die Spielerliste liegt nur auf diesem Handy. Verbinde dich oben mit dem Verein, damit alle dieselbe Liste sehen.';
   $('#resumeBtn').hidden=!(G&&!G.over);
   store('dart.settings',S);
 }
-$('#addP').onclick=()=>{S.players.push('Spieler '+(S.players.length+1));renderSetup()};
+const newPlayer=()=>{
+  const n=addPlayer($('#newP').value);if(!n)return;
+  $('#newP').value='';$('#rosterMsg').textContent='';
+  if(!S.players.some(p=>p.toLowerCase()===n.toLowerCase())&&S.players.length<6) S.players.push(n);
+  buzz();renderSetup();
+};
+$('#addNew').onclick=newPlayer;$('#newP').onkeydown=e=>{if(e.key==='Enter')newPlayer()};
+$('#manageP').onclick=()=>openRosterMgr();
 $('#resumeBtn').onclick=()=>show('game');
 $('#logBtn').onclick=()=>show('log');
 $('#startBtn').onclick=()=>{
-  const names=S.players.map((n,i)=>n.trim()||('Spieler '+(i+1)));
+  if(!S.players.length){$('#rosterMsg').textContent='Bitte mindestens einen Spieler auswählen.';return}
+  const names=S.players.slice();
   newGame({game:S.game,start:S.start,out:S.out,legsToWin:S.legs,atcBull:S.atcBull,atcSkip:S.atcSkip,rounds:S.hsRounds,krounds:S.knRounds,practice:S.practice,names});
 };
 function newGame(c){
@@ -848,7 +908,7 @@ function renderLog(){
 const FBCFG={apiKey:"AIzaSyCMfLD7ev4LzYt6bxOkLQ7gFoJ-bsjhLdM",authDomain:"schierkerband.firebaseapp.com",projectId:"schierkerband",
   storageBucket:"schierkerband.firebasestorage.app",messagingSenderId:"55760127861",appId:"1:55760127861:web:14c91676b453d0213d753c"};
 let club=load('dart.club')||'',unsub=null,fbInit=null,retry=null;
-const sync={state:'local',pending:false};
+const sync={state:'local',pending:false,last:0};
 const fbOk=()=>typeof firebase!=='undefined';
 function fbStart(){
   if(fbInit) return fbInit;
@@ -873,12 +933,66 @@ async function clubCol(pw,test){
   if(test) await c.limit(1).get({source:'server'});
   return c;
 }
+/* Gemeinsame Spielerliste */
+let rcol=null,rUnsub=null;
+const rKey=()=>club?'dart.roster.club':'dart.roster';
+const rid=n=>encodeURIComponent(n.trim().toLowerCase()).slice(0,400)||'spieler';
+const saveRoster=()=>store(rKey(),roster);
+const rosterNames=()=>roster.map(r=>r.name).sort((a,b)=>a.localeCompare(b,'de'));
+function addPlayer(name){
+  name=String(name||'').trim().replace(/\s+/g,' ').slice(0,16);
+  if(!name){$('#rosterMsg').textContent='Bitte einen Namen eingeben.';return null}
+  const ex=roster.find(r=>r.name.toLowerCase()===name.toLowerCase());
+  if(ex) return ex.name;
+  const r={id:rid(name),name};roster.push(r);saveRoster();
+  if(club){
+    if(rcol) rcol.doc(r.id).set({name:r.name,created:Date.now()}).catch(()=>{$('#rosterMsg').textContent='Spieler konnte nicht gespeichert werden.'});
+    else{const q=load('dart.rqueue')||[];q.push(r);store('dart.rqueue',q)}
+  }
+  return r.name;
+}
+function delPlayer(id){
+  roster=roster.filter(r=>r.id!==id);saveRoster();
+  if(club){if(rcol) rcol.doc(id).delete().catch(()=>{});else store('dart.rqueue',(load('dart.rqueue')||[]).filter(r=>r.id!==id))}
+}
+function startRoster(){
+  if(rUnsub)rUnsub();
+  rcol=col.parent.collection('spieler');
+  let first=true;
+  rUnsub=rcol.onSnapshot({includeMetadataChanges:true},snap=>{
+    roster=snap.docs.map(d=>({id:d.id,name:(d.data()||{}).name||d.id}));
+    store('dart.roster.club',roster);
+    if(first&&!snap.metadata.fromCache){
+      first=false;
+      const have=new Set(roster.map(r=>r.id)),add=new Map();
+      (load('dart.rqueue')||[]).forEach(r=>add.set(r.id,r.name));
+      if(!roster.length){
+        H.forEach(e=>e.players.forEach(p=>add.set(rid(p.name),p.name)));
+        (load('dart.roster')||[]).forEach(r=>add.set(r.id,r.name));
+      }
+      const todo=[...add].filter(([id])=>!have.has(id));
+      if(todo.length){fbStart().then(db=>{const bt=db.batch();todo.forEach(([id,name])=>bt.set(rcol.doc(id),{name,created:Date.now()}));return bt.commit()}).then(()=>store('dart.rqueue',null)).catch(()=>{})}
+      else store('dart.rqueue',null);
+    }
+    if($('#setup').classList.contains('on')) renderSetup();
+  },()=>{});
+}
+function openRosterMgr(){
+  const list=rosterNames().map(n=>{const r=roster.find(x=>x.name===n);return `<div class="mrow"><span>${esc(n)}</span><button data-id="${esc(r.id)}" data-n="${esc(n)}">Entfernen</button></div>`}).join('')||'<p>Noch keine Spieler angelegt.</p>';
+  openOv(`<h3>Spielerliste</h3><p>Entfernte Spieler verschwinden nur aus der Auswahl${club?' auf allen Handys':''}. Ihre bisherigen Ergebnisse bleiben im Protokoll.</p><div class="mlist">${list}</div><div class="btns"><button class="pri" id="mgx">Fertig</button></div>`);
+  $('#mgx').onclick=()=>{closeOv();renderSetup()};
+  $('#ovCard').querySelectorAll('.mrow button').forEach(b=>b.onclick=()=>{
+    if(b.dataset.c){delPlayer(b.dataset.id);S.players=S.players.filter(p=>p.toLowerCase()!==b.dataset.n.toLowerCase());openRosterMgr()}
+    else{b.dataset.c='1';b.textContent='Wirklich entfernen?';b.classList.add('warn')}
+  });
+}
+
 function startSync(c){
   if(unsub)unsub();
-  col=c;
+  col=c;startRoster();
   unsub=col.onSnapshot({includeMetadataChanges:true},snap=>{
     H=snap.docs.map(d=>d.data());
-    sync.state=snap.metadata.fromCache?'offline':'online';sync.pending=snap.metadata.hasPendingWrites;
+    sync.state=snap.metadata.fromCache?'offline':'online';sync.pending=snap.metadata.hasPendingWrites;if(!snap.metadata.fromCache)sync.last=Date.now();
     store('dart.history.club',H);onSync();
   },err=>{sync.state=err&&err.code==='permission-denied'?'denied':'offline';onSync()});
 }
@@ -913,6 +1027,7 @@ const STATUS={local:['Nur auf diesem Gerät','off'],connecting:['Verbinde mit de
 function onSync(){
   let [t,c]=STATUS[sync.state]||STATUS.local;
   if(sync.state==='online'&&sync.pending) t='Online, Ergebnisse werden hochgeladen …';
+  else if(sync.state==='online'&&sync.last) t='Online verbunden, Stand '+fmtTime(sync.last)+' Uhr';
   [['#clubTxt','#clubDot'],['#clubTxt2','#clubDot2']].forEach(([a,b])=>{$(a).textContent=t;$(b).className='dot '+c});
   if(sync.state==='online') flushQueue();
   if($('#log').classList.contains('on')) renderLog();
@@ -932,7 +1047,7 @@ function openClub(){
       $('#pwgo').disabled=true;msg.textContent='Verbinde …';
       try{
         const c=await clubCol(pw,true);
-        club=pw;store('dart.club',pw);H=[];startSync(c);closeOv();flash('Mit dem Verein verbunden');
+        club=pw;store('dart.club',pw);H=[];roster=load('dart.roster.club')||[];startSync(c);renderSetup();closeOv();flash('Mit dem Verein verbunden');
         if(local.length) setTimeout(openClub,600);
       }catch(e){
         const code=(e&&e.code)||'';
@@ -962,14 +1077,79 @@ function openClub(){
   $('#dc').onclick=()=>{
     openOv(`<h3>Verbindung trennen?</h3><p>Danach werden neue Spiele nur noch auf diesem Gerät gespeichert. Das gemeinsame Protokoll bleibt online erhalten.</p><div class="btns"><button class="pri" id="dy2">Trennen</button><button id="dn2">Abbrechen</button></div>`);
     $('#dn2').onclick=closeOv;
-    $('#dy2').onclick=()=>{if(unsub)unsub();unsub=null;col=null;club='';store('dart.club',null);H=load('dart.history')||[];sync.state='local';closeOv();onSync()};
+    $('#dy2').onclick=()=>{if(unsub)unsub();unsub=null;if(rUnsub)rUnsub();rUnsub=null;rcol=null;col=null;club='';roster=load('dart.roster')||[];store('dart.club',null);H=load('dart.history')||[];sync.state='local';closeOv();onSync();renderSetup()};
   };
 }
 $('#clubBtn').onclick=openClub;$('#clubBtn2').onclick=openClub;
 
+/* ---------- Aktualisieren (Wischen von oben) ---------- */
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
+async function refreshData(){
+  if(!club) return 'Nicht mit dem Verein verbunden';
+  if(!fbOk()) return 'Keine Verbindung zum Internet';
+  try{
+    if(!col){await initClub();if(!col) return 'Keine Verbindung zum Internet'}
+    const db=await fbStart();
+    try{await db.disableNetwork();await db.enableNetwork()}catch(e){}
+    const [a,b]=await withTimeout(Promise.all([col.get({source:'server'}),rcol.get({source:'server'})]),12000);
+    H=a.docs.map(d=>d.data());store('dart.history.club',H);
+    roster=b.docs.map(d=>({id:d.id,name:(d.data()||{}).name||d.id}));store('dart.roster.club',roster);
+    sync.state='online';sync.last=Date.now();
+    await flushQueue();onSync();
+    if($('#setup').classList.contains('on')) renderSetup();
+    return 'Aktualisiert, '+H.length+(H.length===1?' Eintrag':' Einträge');
+  }catch(e){
+    sync.state='offline';onSync();
+    return (e&&e.code==='permission-denied')?'Vereinspasswort ungültig':'Keine Verbindung zum Internet';
+  }
+}
+const ptr=$('#ptr'),ptrTxt=$('#ptrTxt'),ptrI=$('#ptrI');
+let ptrBusy=false;
+function ptrSet(px,txt,cls){ptr.style.setProperty('--py',px+'px');ptr.style.opacity=px>0?Math.min(1,px/40):0;ptr.className='ptr'+(cls?' '+cls:'');if(txt)ptrTxt.textContent=txt}
+function ptrHide(){ptr.style.transition='';ptrSet(0,'',)}
+async function doRefresh(){
+  ptrBusy=true;ptrSet(64,'Aktualisiere …','spin');ptrI.textContent='↻';
+  const msg=await refreshData();
+  ptrSet(64,msg,'done');ptrI.textContent=msg.startsWith('Aktualisiert')?'✓':'!';buzz();
+  setTimeout(()=>{ptrHide();ptrBusy=false;ptrI.textContent='↓'},1600);
+}
+function attachPTR(el){
+  let y0=0,dy=0,on=false;
+  el.addEventListener('touchstart',e=>{
+    on=!ptrBusy&&el.scrollTop<=0&&!$('#ov').classList.contains('on')&&e.touches.length===1;
+    if(on){y0=e.touches[0].clientY;dy=0}
+  },{passive:true});
+  el.addEventListener('touchmove',e=>{
+    if(!on)return;
+    dy=e.touches[0].clientY-y0;
+    if(dy<=0||el.scrollTop>0){ptrHide();return}
+    const px=Math.min(dy*0.5,90),ready=px>=60;
+    ptrSet(px,ready?'Loslassen zum Aktualisieren':'Zum Aktualisieren ziehen',ready?'ready':'');
+    ptrI.style.transform=`rotate(${ready?180:Math.round(px*3)}deg)`;
+  },{passive:true});
+  el.addEventListener('touchend',()=>{
+    if(!on)return;on=false;ptrI.style.transform='';
+    if(dy*0.5>=60) doRefresh(); else ptrHide();
+  });
+}
+attachPTR($('#setup'));attachPTR($('#log'));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&club&&!col)initClub()});
+
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
   if(id==='setup'){closeOv();renderSetup()}else if(id==='log'){closeOv();renderLog()}else render();
+}
+roster=load(club?'dart.roster.club':'dart.roster')||[];
+if(!S.v10){
+  S.v10=1;
+  const ph=n=>/^Spieler \d+$/.test(n);
+  if(!club&&!roster.length){
+    const m=new Map();
+    H.forEach(e=>e.players.forEach(p=>{if(!ph(p.name))m.set(rid(p.name),p.name)}));
+    S.players.forEach(n=>{if(n&&!ph(n.trim()))m.set(rid(n),n.trim())});
+    roster=[...m].map(([id,name])=>({id,name}));store('dart.roster',roster);
+  }
+  S.players=S.players.filter(n=>n&&!ph(n.trim()));store('dart.settings',S);
 }
 show(G&&!G.over?'game':'setup');
 if(club){H=load('dart.history.club')||[]}
